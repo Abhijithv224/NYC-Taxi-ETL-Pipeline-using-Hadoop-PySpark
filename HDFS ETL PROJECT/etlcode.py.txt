@@ -1,0 +1,26 @@
+from pyspark.sql.functions import hour
+
+# reload data (important)
+df = spark.read.parquet("hdfs://localhost:9000/data/yellow_tripdata.parquet")
+
+df_clean = df.filter(df.passenger_count > 0)
+
+df_final = df_clean.filter(
+    (df_clean.trip_distance > 0) &
+    (df_clean.trip_distance < 100) &
+    (df_clean.total_amount > 0) &
+    (df_clean.total_amount < 500)
+)
+
+# Insight 1: revenue by passenger
+df_final.groupBy("passenger_count") \
+    .sum("total_amount") \
+    .toPandas() \
+    .to_csv("revenue_by_passenger.csv", index=False)
+
+# Insight 2: hourly trips
+df_hour = df_final.withColumn("hour", hour("tpep_pickup_datetime"))
+
+df_hour.groupBy("hour").count() \
+    .toPandas() \
+    .to_csv("trips_by_hour.csv", index=False)
